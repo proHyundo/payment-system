@@ -1,4 +1,4 @@
-package pro.hyundo.paymentservice.global.exception;
+package pro.hyundo.paymentsystem.global.exception;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import pro.hyundo.paymentservice.global.response.ErrorResponse;
+import pro.hyundo.paymentsystem.global.response.ErrorResponse;
 
 @ConfigurationProperties("error-trace")
 @RestControllerAdvice

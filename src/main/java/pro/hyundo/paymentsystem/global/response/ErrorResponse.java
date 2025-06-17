@@ -1,4 +1,4 @@
-package pro.hyundo.paymentservice.global.response;
+package pro.hyundo.paymentsystem.global.response;
 
 import java.util.List;
 import lombok.Getter;

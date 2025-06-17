@@ -1,4 +1,4 @@
-package pro.hyundo.paymentservice.global.annotation;
+package pro.hyundo.paymentsystem.global.annotation;
 
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.stereotype.Component;

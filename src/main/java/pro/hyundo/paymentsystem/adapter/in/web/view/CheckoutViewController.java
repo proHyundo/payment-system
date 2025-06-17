@@ -1,9 +1,9 @@
-package pro.hyundo.paymentservice.adapter.in.web.view;
+package pro.hyundo.paymentsystem.adapter.in.web.view;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import pro.hyundo.paymentservice.global.annotation.WebAdapter;
+import pro.hyundo.paymentsystem.global.annotation.WebAdapter;
 import reactor.core.publisher.Mono;
 
 @WebAdapter

@@ -1,4 +1,4 @@
-package pro.hyundo.paymentservice.global.response;
+package pro.hyundo.paymentsystem.global.response;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
