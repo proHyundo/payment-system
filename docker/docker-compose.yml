@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0.33
+    container_name: payment-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: payment_db
+    command:
+      - '--character-set-server=utf8mb4'
+      - '--collation-server=utf8mb4_unicode_ci'
+      - '--lower_case_table_names=1'
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  # 2. Zookeeper (Kafka 실행에 필요)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: payment-zookeeper
+    ports:
+      # 로컬 PC의 2181번 포트를 컨테이너의 2181번 포트와 연결합니다.
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # 3. Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: payment-kafka
+    ports:
+      # Spring Boot 애플리케이션이 접속할 포트입니다. (application.yml과 일치)
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # 외부(로컬 PC)에서 Kafka에 접속하기 위한 리스너 설정입니다.
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # 토픽이 없을 경우 자동으로 생성하지 않도록 설정합니다. (KafkaConfig.java가 담당)
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+
+  # 4. Kafka Web UI (Optional, for easy management)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: payment-kafka-ui
+    ports:
+      # 로컬 PC의 8080 포트로 접속하여 Kafka 상태를 확인할 수 있습니다.
+      - "8081:8080"
+    depends_on:
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-payment-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      DYNAMIC_CONFIG_ENABLED: "true"
+
+volumes:
+  mysql-data:
