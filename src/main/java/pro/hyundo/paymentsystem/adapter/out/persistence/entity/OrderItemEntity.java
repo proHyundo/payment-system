@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.util.UUID;
+import lombok.Setter;
 import org.hibernate.annotations.Comment;
 import pro.hyundo.paymentsystem.domain.OrderState;
 
@@ -13,6 +14,7 @@ import pro.hyundo.paymentsystem.domain.OrderState;
         @UniqueConstraint(columnNames = {"order_id", "item_idx", "product_id"})
 })
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OrderItemEntity extends BaseTimeEntity {
 

@@ -17,6 +17,7 @@ import pro.hyundo.paymentsystem.domain.OrderState;
 @Entity
 @Table(name = "t_purchase_order")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PurchaseOrderEntity extends BaseTimeEntity {
 
