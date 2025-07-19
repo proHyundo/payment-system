@@ -57,12 +57,18 @@ public class OrderItemEntity extends BaseTimeEntity {
     @Comment("총 가격(상품 가격 * 주문 수량)")
     private Integer amount;
 
+    @Column(nullable = false)
+    @Comment("상품 판매자 ID")
+    private String merchantId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Comment("개별 주문상태")
     private OrderState orderState;
 
-    public OrderItemEntity(Integer itemIdx, UUID productId, String productName, Integer productPrice, String productSize, Integer quantity, Integer amount, OrderState orderState) {
+    public OrderItemEntity(Integer itemIdx, UUID productId, String productName, Integer productPrice,
+                           String productSize, Integer quantity, Integer amount, String merchantId,
+                           OrderState orderState) {
         this.itemIdx = itemIdx;
         this.productId = productId;
         this.productName = productName;
@@ -70,6 +76,7 @@ public class OrderItemEntity extends BaseTimeEntity {
         this.productSize = productSize;
         this.quantity = quantity;
         this.amount = amount;
+        this.merchantId = merchantId;
         this.orderState = orderState;
     }
 

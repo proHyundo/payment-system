@@ -101,6 +101,7 @@ public class PaymentPersistenceMapper {
                 orderItem.getProductSize(),
                 orderItem.getQuantity(),
                 orderItem.getAmount(),
+                orderItem.getMerchantId(),
                 orderItem.getOrderState()
         );
     }

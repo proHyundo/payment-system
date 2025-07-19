@@ -15,23 +15,36 @@ import lombok.Getter;
 @Builder
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class OrderItem {
-    private final Long id; // 데이터베이스 ID
-    private final UUID orderId; // PurchaseOrder의 ID (FK)
-    private final Integer itemIdx; // 주문 내 상품 순서
-    private final UUID productId; // 상품 ID
-    private final String productName; // 상품명
-    private final Integer productPrice; // 상품 가격
-    private final String productSize; // 상품 사이즈
-    private final Integer quantity; // 수량
-    private final Integer amount; // 금액 (가격 * 수량)
-    private OrderState orderState; // 개별 주문 상태
+
+    private final Long id;
+    private final UUID orderId;
+    private final Integer itemIdx;
+    private final UUID productId;
+    private final String productName;
+    private final Integer productPrice;
+    private final String productSize;
+    private final Integer quantity;
+    private final Integer amount;
+    private final String merchantId;        // ← 핵심 추가!
+    private OrderState orderState;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     /**
-     * 상위 주문의 상태 변경에 따라 개별 항목의 상태를 업데이트합니다.
-     * @param orderState 새로운 주문 상태
+     * 특정 판매자의 상품인지 확인합니다.
      */
+    public boolean belongsToMerchant(String merchantId) {
+        return this.merchantId.equals(merchantId);
+    }
+
+    /**
+     * 상품 정보 요약을 반환합니다.
+     */
+    public String getProductSummary() {
+        return String.format("%s (%s) x%d - %s",
+                productName, productSize, quantity, merchantId);
+    }
+
     void updateOrderState(OrderState orderState) {
         this.orderState = orderState;
         this.updatedAt = LocalDateTime.now();

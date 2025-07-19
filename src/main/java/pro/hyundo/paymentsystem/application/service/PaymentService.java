@@ -1,6 +1,9 @@
 package pro.hyundo.paymentsystem.application.service;
 
+import java.time.LocalDateTime;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +12,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import pro.hyundo.paymentsystem.adapter.out.messaging.dto.PaymentFailureEvent;
+import pro.hyundo.paymentsystem.adapter.out.messaging.dto.PaymentSuccessEvent;
 import pro.hyundo.paymentsystem.application.port.in.ConfirmPaymentCommand;
 import pro.hyundo.paymentsystem.application.port.in.CreatePurchaseOrderCommand;
 import pro.hyundo.paymentsystem.application.port.in.PaymentUseCase;
@@ -23,6 +28,7 @@ import pro.hyundo.paymentsystem.domain.OrderState;
 import pro.hyundo.paymentsystem.domain.PaymentTransaction;
 import pro.hyundo.paymentsystem.domain.PurchaseOrder;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -99,7 +105,7 @@ public class PaymentService implements PaymentUseCase {
             savePurchaseOrderPort.savePurchaseOrder(purchaseOrder);
             savePaymentPort.savePayment(paymentTransaction, cardPayment);
 
-            sendPaymentEventPort.sendPaymentSuccessEvent("결제 성공, 주문번호: " + purchaseOrder.getOrderId());
+            sendSettlementEventsPerMerchant(purchaseOrder);
 
         } catch (Exception e) {
             // 실패 시, 별도의 트랜잭션으로 실패 처리를 위임.
@@ -120,7 +126,48 @@ public class PaymentService implements PaymentUseCase {
         PurchaseOrder failedOrder = loadPurchaseOrderPort.loadPurchaseOrder(orderId);
         failedOrder.failOrder();
         savePurchaseOrderPort.savePurchaseOrder(failedOrder);
-        sendPaymentEventPort.sendPaymentFailureEvent("결제 실패, 주문번호: " + failedOrder.getOrderId());
+
+        // 구조화된 실패 이벤트 발행
+        PaymentFailureEvent event = PaymentFailureEvent.builder()
+                .eventType("PAYMENT_FAILED")
+                .orderId(failedOrder.getOrderId())
+                .paymentId(failedOrder.getPaymentId())
+                .failureReason("PG사 승인 실패")
+                .failureCode("INSUFFICIENT_BALANCE")
+                .customerName(failedOrder.getName())
+                .amount(failedOrder.getTotalPrice())
+                .paymentMethod("CARD")
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        sendPaymentEventPort.sendPaymentFailureEvent(event);
+
+        log.error("결제 실패 처리 완료 - orderId: {}, reason: {}",
+                orderId, event.getFailureReason());
+    }
+
+    /**
+     * 판매자별로 정산 이벤트를 발행합니다.
+     */
+    private void sendSettlementEventsPerMerchant(PurchaseOrder purchaseOrder) {
+        Map<String, Integer> amountByMerchant = purchaseOrder.getAmountByMerchant();
+
+        amountByMerchant.forEach((merchantId, amount) -> {
+            PaymentSuccessEvent event = PaymentSuccessEvent.builder()
+                    .orderId(purchaseOrder.getOrderId())
+                    .paymentId(purchaseOrder.getPaymentId())
+                    .merchantId(merchantId)           // ← 개별 판매자
+                    .totalAmount(amount)              // ← 해당 판매자 금액만
+                    .customerName(purchaseOrder.getName())
+                    .paymentMethod("CARD")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            sendPaymentEventPort.sendPaymentSuccessEvent(event);
+
+            log.info("판매자별 정산 이벤트 발행 - merchantId: {}, amount: {}",
+                    merchantId, amount);
+        });
     }
 }
 
