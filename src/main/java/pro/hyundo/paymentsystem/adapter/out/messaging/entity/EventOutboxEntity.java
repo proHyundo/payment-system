@@ -32,10 +32,14 @@ public class EventOutboxEntity {
 
         @Enumerated(EnumType.STRING)
         private EventStatus status = EventStatus.PENDING;
-        private int retryCount = 0;
 
         private LocalDateTime createdAt = LocalDateTime.now();
         private LocalDateTime publishedAt;
+        
+        // 재시도 관련 필드 추가
+        private int retryCount = 0;
+        private String errorMessage;
+        private LocalDateTime lastRetryAt;
 
         @Builder
         public EventOutboxEntity(String aggregateId, String aggregateType, String eventType, String payload) {
@@ -45,6 +49,9 @@ public class EventOutboxEntity {
             this.payload = payload;
         }
 
+        /**
+         * 발행 완료로 상태 변경
+         */
         public void markAsPublished() {
             this.status = EventStatus.PUBLISHED;
             this.publishedAt = LocalDateTime.now();
@@ -53,10 +60,15 @@ public class EventOutboxEntity {
         /**
          * 재시도 실패 처리
          */
-        public void markRetryFailed() {
+        public void markRetryFailed(String errorMessage) {
             this.retryCount++;
+            this.errorMessage = errorMessage;
+            this.lastRetryAt = LocalDateTime.now();
+            
             if (this.retryCount >= 3) {
-                this.status = EventStatus.FAILED;
+                this.status = EventStatus.FAILED; // 최종 실패 상태 유지
+            } else {
+                this.status = EventStatus.FAILED; // 재시도 가능한 실패
             }
         }
 }
