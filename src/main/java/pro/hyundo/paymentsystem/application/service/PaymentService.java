@@ -1,5 +1,6 @@
 package pro.hyundo.paymentsystem.application.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import pro.hyundo.paymentsystem.adapter.out.messaging.dto.PaymentFailureEvent;
 import pro.hyundo.paymentsystem.adapter.out.messaging.dto.PaymentSuccessEvent;
+import pro.hyundo.paymentsystem.adapter.out.messaging.entity.EventOutboxEntity;
+import pro.hyundo.paymentsystem.adapter.out.messaging.repository.EventOutboxJpaRepository;
 import pro.hyundo.paymentsystem.application.port.in.ConfirmPaymentCommand;
 import pro.hyundo.paymentsystem.application.port.in.CreatePurchaseOrderCommand;
 import pro.hyundo.paymentsystem.application.port.in.PaymentUseCase;
@@ -39,6 +42,8 @@ public class PaymentService implements PaymentUseCase {
     private final SavePaymentPort savePaymentPort;
     private final SendPaymentEventPort sendPaymentEventPort;
     private final PaymentPort paymentPort;
+    private final EventOutboxJpaRepository eventOutboxRepository;
+    private final ObjectMapper objectMapper;
 
     /**
      * 주문을 생성하고 데이터베이스에 저장합니다.
@@ -106,6 +111,7 @@ public class PaymentService implements PaymentUseCase {
             savePaymentPort.savePayment(paymentTransaction, cardPayment);
 
             sendSettlementEventsPerMerchant(purchaseOrder);
+            savePaymentEventsToOutbox(purchaseOrder);
 
         } catch (Exception e) {
             // 실패 시, 별도의 트랜잭션으로 실패 처리를 위임.
@@ -167,6 +173,44 @@ public class PaymentService implements PaymentUseCase {
 
             log.info("판매자별 정산 이벤트 발행 - merchantId: {}, amount: {}",
                     merchantId, amount);
+        });
+    }
+
+    /**
+     * 결제 성공 이벤트를 아웃박스에 저장 (트랜잭션 보장)
+     */
+    private void savePaymentEventsToOutbox(PurchaseOrder purchaseOrder) {
+        Map<String, Integer> amountByMerchant = purchaseOrder.getAmountByMerchant();
+
+        amountByMerchant.forEach((merchantId, amount) -> {
+            PaymentSuccessEvent event = PaymentSuccessEvent.builder()
+                    .orderId(purchaseOrder.getOrderId())
+                    .paymentId(purchaseOrder.getPaymentId())
+                    .merchantId(merchantId)
+                    .totalAmount(amount)
+                    .customerName(purchaseOrder.getName())
+                    .paymentMethod("CARD")
+                    .timestamp(LocalDateTime.now())
+                    .build();
+
+            try {
+                String payload = objectMapper.writeValueAsString(event);
+
+                EventOutboxEntity outboxEvent = EventOutboxEntity.builder()
+                        .aggregateId(purchaseOrder.getPaymentId())
+                        .aggregateType("PAYMENT")
+                        .eventType("PAYMENT_SUCCESS")
+                        .payload(payload)
+                        .build();
+
+                eventOutboxRepository.save(outboxEvent);
+
+                log.info("아웃박스에 이벤트 저장 - merchantId: {}, amount: {}", merchantId, amount);
+
+            } catch (Exception e) {
+                log.error("아웃박스 저장 실패", e);
+                throw new RuntimeException("이벤트 저장 실패", e);
+            }
         });
     }
 }

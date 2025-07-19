@@ -32,6 +32,7 @@ public class EventOutboxEntity {
 
         @Enumerated(EnumType.STRING)
         private EventStatus status = EventStatus.PENDING;
+        private int retryCount = 0;
 
         private LocalDateTime createdAt = LocalDateTime.now();
         private LocalDateTime publishedAt;
@@ -47,5 +48,15 @@ public class EventOutboxEntity {
         public void markAsPublished() {
             this.status = EventStatus.PUBLISHED;
             this.publishedAt = LocalDateTime.now();
+        }
+
+        /**
+         * 재시도 실패 처리
+         */
+        public void markRetryFailed() {
+            this.retryCount++;
+            if (this.retryCount >= 3) {
+                this.status = EventStatus.FAILED;
+            }
         }
 }
